@@ -1,10 +1,25 @@
 #!/bin/bash
 
+set -e
+
+K3S_VERSION=v1.21.11+k3s1
+KUBELESS_VER=v1.0.8
+FALCO_CHART_VERSION=1.17.3
+
+echo "Using K3S version $K3S_VERSION, latest is:"
+curl -Ls https://api.github.com/repos/k3s-io/k3s/releases/latest | grep tag_name | cut -d '"' -f 4
+
+echo "Using Kubeless version $KUBELESS_VER, latest is:"
+curl -Ls https://api.github.com/repos/kubeless/kubeless/releases/latest | grep tag_name | cut -d '"' -f 4
+
+echo "Using Falco Chart version $FALCO_CHART_VERSION, latest is:"
+curl -Ls https://raw.githubusercontent.com/falcosecurity/charts/master/falco/Chart.yaml | yq '.version'
+
 # Bootstrap cluster
 multipass launch --name k3s-master --cpus 1 --mem 2048M --disk 10G
 multipass launch --name k3s-node1 --cpus 1 --mem 2048M --disk 15G
 multipass launch --name k3s-node2 --cpus 1 --mem 2048M --disk 15G
-multipass exec k3s-master -- /bin/bash -c "curl -sfL https://get.k3s.io | K3S_KUBECONFIG_MODE=644 sh -"
+multipass exec k3s-master -- /bin/bash -c "curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION=$K3S_VERSION K3S_KUBECONFIG_MODE=644 sh -"
 export K3S_TOKEN="$(multipass exec k3s-master -- /bin/bash -c "sudo cat /var/lib/rancher/k3s/server/node-token")"
 export K3S_IP_SERVER="https://$(multipass info k3s-master | grep "IPv4" | awk -F' ' '{print $2}'):6443"
 multipass exec k3s-node1 -- /bin/bash -c "curl -sfL https://get.k3s.io | K3S_TOKEN=${K3S_TOKEN} K3S_URL=${K3S_IP_SERVER} sh -"
@@ -18,7 +33,16 @@ sleep 2
 
 # Install falco + falcosdekick + webui
 helm repo add falcosecurity https://falcosecurity.github.io/charts
-helm install falco falcosecurity/falco -f custom-rules.yaml  --set falcosidekick.enabled=true --set falcosidekick.webui.enabled=true --set falcosidekick.image.tag=latest --set falcosidekick.webui.image.tag=v1-beta --set auditLog.enabled=true --set falcosidekick.config.kubeless.namespace=kubeless --set falcosidekick.config.kubeless.function=delete-pod -n falco --create-namespace
+helm install falco falcosecurity/falco -n falco --create-namespace \
+  --version $FALCO_CHART_VERSION \
+  -f custom-rules.yaml \
+  --set auditLog.enabled=true \
+  --set falcosidekick.enabled=true \
+  --set falcosidekick.webui.enabled=true \
+  --set falcosidekick.image.tag=latest \
+  --set falcosidekick.webui.image.tag=v1-beta \
+  --set falcosidekick.config.kubeless.namespace=kubeless \
+  --set falcosidekick.config.kubeless.function=delete-pod
 
 # Set up audit log endpoint (falco)
 export FALCO_SVC_ENDPOINT=$(kubectl get svc -n falco --field-selector metadata.name=falco -o=json | jq -r ".items[] | .spec.clusterIP")
@@ -50,9 +74,10 @@ multipass exec k3s-master -- /bin/bash -c "sudo systemctl daemon-reload"
 multipass exec k3s-master -- /bin/bash -c "sudo systemctl restart k3s"
 
 # Install kubeless + Function
-export RELEASE=$(curl -s https://api.github.com/repos/kubeless/kubeless/releases/latest | grep tag_name | cut -d '"' -f 4)
 kubectl create ns kubeless
-kubectl create -f https://github.com/kubeless/kubeless/releases/download/$RELEASE/kubeless-$RELEASE.yaml
+kubectl create -n kubeless -f \
+  https://github.com/kubeless/kubeless/releases/download/$KUBELESS_VER/kubeless-$KUBELESS_VER.yaml
+
 cat <<EOF | kubectl apply -n kubeless -f -
 apiVersion: v1
 kind: ServiceAccount
