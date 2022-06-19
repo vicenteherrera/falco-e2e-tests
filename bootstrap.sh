@@ -6,13 +6,16 @@ K3S_VERSION=v1.21.11+k3s1
 KUBELESS_VER=v1.0.8
 FALCO_CHART_VERSION=1.17.3
 
-echo "Using K3S version $K3S_VERSION, latest is:"
+echo "K3S version using : $K3S_VERSION"
+echo -n "K3S version latest: "
 curl -Ls https://api.github.com/repos/k3s-io/k3s/releases/latest | grep tag_name | cut -d '"' -f 4
 
-echo "Using Kubeless version $KUBELESS_VER, latest is:"
+echo "Kubeless version using : $KUBELESS_VER"
+echo -n "Kubeless version latest: "
 curl -Ls https://api.github.com/repos/kubeless/kubeless/releases/latest | grep tag_name | cut -d '"' -f 4
 
-echo "Using Falco Chart version $FALCO_CHART_VERSION, latest is:"
+echo "Falco chart version using : $FALCO_CHART_VERSION"
+echo -n "Falco chart version latest: "
 curl -Ls https://raw.githubusercontent.com/falcosecurity/charts/master/falco/Chart.yaml | yq '.version'
 
 # Bootstrap cluster
