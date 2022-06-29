@@ -32,7 +32,7 @@ I=30
 while [ $I -ne 0 ] && [ "$TEST_EXEC" == "" ]; do
   sleep 3
   TEST_EXEC=$(kubectl logs svc/falco -n falco --since=5m | tee logs/detect_runtime.log | grep "Notice Attach/Exec to pod (user=system:admin pod=falco-" ||:)
-  let I=I+1
+  let I=I-1
   echo -n "."
 done
 echo ""
@@ -53,7 +53,7 @@ I=30
 while [ $I -ne 0 ] && [ "$TEST_AUDIT" == "" ]; do
   sleep 3
   TEST_AUDIT=$(kubectl logs svc/falco -n falco --since=5m | tee logs/detect_audit.log | grep "Warning Pod created in kube namespace (user=system:admin pod=debug ns=kube-system images=alpine)" ||:)
-  let I=I+1
+  let I=I-1
   echo -n "."
 done
 echo ""
