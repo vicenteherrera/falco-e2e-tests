@@ -32,6 +32,23 @@ multipass delete --all -p
 
 Also check `makefile` for easy chained calls.
 
+### Additional examples
+
+```bash
+# Execute local Falco helm chart tests
+git clone github.com/falcosecurity/charts.git
+
+# Create cluster, deploy local chart, execute tests
+make all-local-chart
+```
+
+```bash
+# Deploy everything with latests versions
+K3S_VERSION="latest" FALCO_CHART_VERSION="latest" KUBELESS_VERSION="latest" \
+  SIDEKICK_UI_VERSION="latest" INSTALL_KUBELESS=1 INSTALL_SIDEKICK=1 RUN_TESTS=1 \
+  ./bootstrap.sh
+```
+
 ## Configuration
 
 See variable definitions at the beginning of the `bootstrap.sh` script.

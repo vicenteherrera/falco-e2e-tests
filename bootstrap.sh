@@ -9,21 +9,20 @@ echo "Starting execution at: $START_TIME" | tee -a ./logs/summary.log
 # Configuration
 
 # MULTINODE: 0 -> use single node, 1 -> use 1 master 2 worker
-MULTINODE=0
+MULTINODE=${MULTINODE:-0}
 
 # INSTALL_KUBELESS: 0 -> no, 1 -> yes
-INSTALL_KUBELESS=0
+INSTALL_KUBELESS=${INSTALL_KUBELESS:-0}
 
 # INSTALL_SIDEKICK: 0 -> no, 1 -> yes
-INSTALL_SIDEKICK=0
+INSTALL_SIDEKICK=${INSTALL_SIDEKICK:-0}
 
 # RUN_TESTS: 0 -> no, 1 -> yes
-RUN_TESTS=1
+RUN_TESTS=${RUN_TESTS:-1}
 
 # FALCO_CHART_LOCATION: "" -> use online version , "./local_dir"  -> use local dir
-FALCO_CHART_LOCATION=""
+FALCO_CHART_LOCATION=${FALCO_CHART_LOCATION:-""}
 # FALCO_CHART_LOCATION=./charts/falco
-
 
 # Latest known working configuration
 
@@ -40,14 +39,21 @@ FALCO_CHART_LATEST=$(curl -Ls https://raw.githubusercontent.com/falcosecurity/ch
 KUBELESS_LATEST=$(curl -Ls https://api.github.com/repos/kubeless/kubeless/releases/latest | grep tag_name | cut -d '"' -f 4)
 SIDEKICK_UI_LATEST=$(curl -Ls https://api.github.com/repos/falcosecurity/falcosidekick-ui/releases/latest | grep tag_name | cut -d '"' -f 4)
 
-# Set up here your desired versions to test
+# If not set, default version is the last known working
 
-K3S_VERSION="$K3S_WORKING"
-FALCO_CHART_VERSION="$FALCO_CHART_WORKING"
-KUBELESS_VERSION="$KUBELESS_WORKING"
-SIDEKICK_UI_VERSION="$SIDEKICK_UI_WORKING"
+K3S_VERSION=${K3S_VERSION:-"$K3S_WORKING"}
+FALCO_CHART_VERSION=${FALCO_CHART_VERSION:-"$FALCO_CHART_WORKING"}
+KUBELESS_VERSION=${KUBELESS_VERSION:-"$KUBELESS_WORKING"}
+SIDEKICK_UI_VERSION=${SIDEKICK_UI_VERSION:-"$SIDEKICK_UI_WORKING"}
 
-# Display initial information
+# If specified "latest" string as the version, replace that with the published latest
+
+[ "$K3S_VERSION" == "latest" ] && K3S_VERSION="$K3S_LATEST"
+[ "$FALCO_CHART_VERSION" == "latest" ] && FALCO_CHART_VERSION="$FALCO_CHART_LATEST"
+[ "$KUBELESS_VERSION" == "latest" ] && KUBELESS_VERSION="$KUBELESS_LATEST"
+[ "$SIDEKICK_UI_VERSION" == "latest" ] && SIDEKICK_UI_VERSION="$SIDEKICK_UI_LATEST"
+
+# Prepare labels to put besides the used version to make it clear which it is
 
 K3S_LABEL=FALCO_CHART_LABEL=KUBELESS_LABEL=""
 [ "$K3S_VERSION" == "$K3S_WORKING" ] && K3S_LABEL="working"
@@ -60,6 +66,8 @@ K3S_LABEL=FALCO_CHART_LABEL=KUBELESS_LABEL=""
 [ "$SIDEKICK_UI_VERSION" == "$SIDEKICK_UI_LATEST" ] && SIDEKICK_UI_LABEL="latest"
 
 [ "$FALCO_CHART_LOCATION" != "" ] && FALCO_CHART_VERSION="$FALCO_CHART_LOCATION" && FALCO_CHART_LABEL="local chart"
+
+# Display initial configuration
 
 echo "K3S using version : $K3S_VERSION ($K3S_LABEL)" | tee -a ./logs/summary.log
 echo "  latest version  : $K3S_LATEST" | tee -a ./logs/summary.log
