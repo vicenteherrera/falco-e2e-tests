@@ -10,14 +10,14 @@ This project makes it easy for you to:
 
 ## Usage
 
-```shell
+```bash
 # Create cluster, deploy chart, and execute tests with default values
 ./bootstrap.sh
 
 # Check summary log
 cat ./logs/summary.log
 
-# In case of Falco pod errors, check log
+# In case of Falco pod errors, check logs
 cat ./logs/falco_pod.log
 
 # Setup kubeconfig to access the cluster 

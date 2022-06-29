@@ -89,9 +89,14 @@ if [ $INSTALL_KUBELESS -ne 0 ]; then
   echo "  known working        : $KUBELESS_WORKING" | tee -a ./logs/summary.log
 fi
 
+
+# Start preparing the cluster
+
+echo "K3S cluster running on multipass virtual machines" | ts '[%Y-%m-%d %H:%M:%S]' | tee -a ./logs/summary.log
+
 if [ $MULTINODE -ne 0 ]; then 
   # Multi node cluster
-  echo "Multi node cluster: 1 master, 2 worker nodes" | ts '[%Y-%m-%d %H:%M:%S]' | tee -a ./logs/summary.log
+  echo "Multi node: 1 master, 2 worker nodes" | ts '[%Y-%m-%d %H:%M:%S]' | tee -a ./logs/summary.log
   multipass launch --name k3s-master --cpus 1 --mem 2048M --disk 10G
   multipass launch --name k3s-node1 --cpus 1 --mem 2048M --disk 15G
   multipass launch --name k3s-node2 --cpus 1 --mem 2048M --disk 15G
@@ -102,7 +107,7 @@ if [ $MULTINODE -ne 0 ]; then
   multipass exec k3s-node2 -- /bin/bash -c "curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION=$K3S_VERSION K3S_TOKEN=${K3S_TOKEN} K3S_URL=${K3S_IP_SERVER} sh -"
 else
   # Single node cluster
-  echo "Single node cluster" | ts '[%Y-%m-%d %H:%M:%S]' | tee -a ./logs/summary.log
+  echo "Single node: 1 master/worker" | ts '[%Y-%m-%d %H:%M:%S]' | tee -a ./logs/summary.log
   multipass launch --name k3s-master --cpus 1 --mem 2048M --disk 20G
   multipass exec k3s-master -- /bin/bash -c "curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION=$K3S_VERSION K3S_KUBECONFIG_MODE=644 sh -"
 fi
@@ -119,8 +124,8 @@ sleep 2
 
 echo "K3S cluster deployed" | ts '[%Y-%m-%d %H:%M:%S]' | tee -a ./logs/summary.log
 
-multipass exec k3s-master -- lsb_release -a | ts '[%Y-%m-%d %H:%M:%S]' | tee -a ./logs/summary.log
-multipass exec k3s-master -- uname -r | ts '[%Y-%m-%d %H:%M:%S] Kernel: ' | tee -a ./logs/summary.log
+multipass exec k3s-master -- lsb_release -a | ts '[%Y-%m-%d %H:%M:%S]  ' | tee -a ./logs/summary.log
+multipass exec k3s-master -- uname -r | ts '[%Y-%m-%d %H:%M:%S]   Kernel: ' | tee -a ./logs/summary.log
 
 # Install falco
 if [ "$FALCO_CHART_LOCATION" == "" ]; then
@@ -129,6 +134,16 @@ if [ "$FALCO_CHART_LOCATION" == "" ]; then
   CHART_VERSION_PARAM="--version $FALCO_CHART_VERSION"
 else 
   CHART_VERSION_PARAM=""
+  echo "Local Falco Helm chart dir: $FALCO_CHART_LOCATION" | ts '[%Y-%m-%d %H:%M:%S]' | tee -a ./logs/summary.log
+  HELM_VERSION=$(helm show chart "$FALCO_CHART_LOCATION" | yq '.version')
+  echo "  chart version: $HELM_VERSION" | ts '[%Y-%m-%d %H:%M:%S]' | tee -a ./logs/summary.log
+  GIT_REMOTE=$(cd $FALCO_CHART_LOCATION && git config --get remote.origin.url)
+  echo "  git repo remote origin: $GIT_REMOTE" | ts '[%Y-%m-%d %H:%M:%S]' | tee -a ./logs/summary.log
+  GIT_BRANCH=$(cd $FALCO_CHART_LOCATION && git branch --show-current)
+  echo "  git branch: $GIT_BRANCH " | ts '[%Y-%m-%d %H:%M:%S]' | tee -a ./logs/summary.log
+  GIT_COMMIT=$(cd $FALCO_CHART_LOCATION && git rev-parse HEAD)
+  GIT_COMMIT_SHORT=$(cd $FALCO_CHART_LOCATION && git rev-parse --short HEAD)
+  echo "  git commit : $GIT_COMMIT ($GIT_COMMIT_SHORT)" | ts '[%Y-%m-%d %H:%M:%S]' | tee -a ./logs/summary.log
 fi
 
 SIDEKICK_PARAM=""
@@ -148,7 +163,7 @@ INSTALL_COMMAND="helm install falco "$FALCO_CHART_LOCATION" -n falco --create-na
   --set auditLog.enabled=true $SIDEKICK_PARAM"
 
 echo "Installing Falco helm chart using:" | ts '[%Y-%m-%d %H:%M:%S]' | tee -a ./logs/summary.log
-echo "$INSTALL_COMMAND" | ts '[%Y-%m-%d %H:%M:%S]' | tee -a ./logs/summary.log
+echo "  $INSTALL_COMMAND" | ts '[%Y-%m-%d %H:%M:%S]' | tee -a ./logs/summary.log
 
 eval $INSTALL_COMMAND
   
@@ -270,7 +285,7 @@ EOF
 fi
 
 # Testing falco installation
-if [ $RUN_TESTS -ne 0 ]; then 
+if [ $RUN_TESTS -ne 0 ]; then
   source ./tests.sh
 fi
 
