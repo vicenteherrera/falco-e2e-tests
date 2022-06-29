@@ -36,7 +36,7 @@ Also check `makefile` for easy chained calls.
 
 ```bash
 # Execute local Falco helm chart tests
-git clone github.com/falcosecurity/charts.git
+git clone https://github.com/falcosecurity/charts.git
 
 # Create cluster, deploy local chart, execute tests
 make all-local-chart
