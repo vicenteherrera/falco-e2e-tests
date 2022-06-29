@@ -16,14 +16,6 @@ else
   echo "[  OK  ]: Falco pods ready" | ts '[%Y-%m-%d %H:%M:%S]' | tee -a ./logs/summary.log
 fi
 
-echo "Checking Falco service"
-TEST_SVC=$(kubectl get svc falco -n falco 2>/dev/null ||:)
-if [ "$TEST_SVC" != "" ]; then
-  echo "[  OK  ]: Falco service deployed" | ts '[%Y-%m-%d %H:%M:%S]' | tee -a ./logs/summary.log
-else
-  echo "[ FAIL ]: Falco service not deployed" | ts '[%Y-%m-%d %H:%M:%S]' | tee -a ./logs/summary.log
-fi
-
 echo "Attaching to pod Falco"
 TEST_START=$(date +'%Y-%m-%dT%H:%M:%SZ' --utc)
 kubectl exec -it daemonset/falco -n falco -- ls 1>/dev/null
@@ -42,6 +34,14 @@ if [ "$TEST_EXEC" != "" ]; then
   echo "[  OK  ]: Detect attach/exec to pod" | ts '[%Y-%m-%d %H:%M:%S]' | tee -a ./logs/summary.log
 else
   echo "[ FAIL ]: Detect attach/exec to pod" | ts '[%Y-%m-%d %H:%M:%S]' | tee -a ./logs/summary.log
+fi
+
+echo "Checking Falco service"
+TEST_SVC=$(kubectl get svc falco -n falco 2>/dev/null ||:)
+if [ "$TEST_SVC" != "" ]; then
+  echo "[  OK  ]: Falco service deployed" | ts '[%Y-%m-%d %H:%M:%S]' | tee -a ./logs/summary.log
+else
+  echo "[ FAIL ]: Falco service not deployed" | ts '[%Y-%m-%d %H:%M:%S]' | tee -a ./logs/summary.log
 fi
 
 echo "Cleaning up possible debug pod"
