@@ -1,8 +1,8 @@
 # What it is
 
-This script will:
+This project makes it easy for you to:
 * Create a K3S cluster using Multipass virtual machine(s)
-* Instal Falco Helm chart (local files or published version number) with Kubernetes audit log enabled
+* Install Falco Helm chart (local files or published version number) with Kubernetes audit log enabled
 * Optionally deploy Falco Sidekick with UI
 * Optionally deploy Kubeless with `delete-pod` function (triggered by a running in a pod in `default` namespace)
   * Set up the whole chain of components `audit-logs` > `falco` > `falcosidekick` > `falcosidekick-ui` & `kubeless`
@@ -29,6 +29,8 @@ export KUBECONFIG=~/.kube/k3s.yaml
 # Destroy multipass cluster
 multipass delete --all -p
 ```
+
+Also check `makefile` for easy chained calls.
 
 ## Configuration
 
