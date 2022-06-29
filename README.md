@@ -11,13 +11,13 @@ This script will:
 ## Usage
 
 ```shell
-# Create cluster, deploy chart, and execute test with default values
+# Create cluster, deploy chart, and execute tests with default values
 ./bootstrap.sh
 
 # Check summary log
 cat ./logs/summary.log
 
-# Just execute test on existing cluster any number of times
+# Just execute tests on existing cluster any number of times
 ./tests.sh
 ```
 
@@ -36,5 +36,5 @@ See variable definitions at the beginning of the `bootstrap.sh` script.
 
 ## Authors
 
-Vicente Herrera [[@vicenteherrera](https://github.com/)]
+Vicente Herrera [[@vicenteherrera](https://github.com/)]  
 Thomas Labarussias [[@Issif](https://github.com/Issif)]
