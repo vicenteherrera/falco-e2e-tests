@@ -134,12 +134,17 @@ if [ $INSTALL_SIDEKICK -ne 0 ]; then
   echo "Including sidekick with Falco" | tee -a ./logs/summary.log
 fi
 
-helm install falco "$FALCO_CHART_LOCATION" -n falco --create-namespace \
+INSTALL_COMMAND="helm install falco "$FALCO_CHART_LOCATION" -n falco --create-namespace \
   $CHART_VERSION_PARAM \
   -f custom-rules.yaml \
-  --set auditLog.enabled=true $SIDEKICK_PARAM
+  --set auditLog.enabled=true $SIDEKICK_PARAM"
+
+echo "Installing Falco helm chart using:" | ts '[%Y-%m-%d %H:%M:%S]' | tee -a ./logs/summary.log
+echo "$INSTALL_COMMAND" | ts '[%Y-%m-%d %H:%M:%S]' | tee -a ./logs/summary.log
+
+eval $INSTALL_COMMAND
   
-  echo "Falco helm chart deployed" | ts '[%Y-%m-%d %H:%M:%S]' | tee -a ./logs/summary.log
+echo "Falco helm chart deployed" | ts '[%Y-%m-%d %H:%M:%S]' | tee -a ./logs/summary.log
 
 # Set up audit log endpoint (falco)
 # Prepare for audit log
