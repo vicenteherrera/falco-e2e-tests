@@ -87,7 +87,6 @@ else
   multipass exec k3s-master -- /bin/bash -c "curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION=$K3S_VERSION K3S_KUBECONFIG_MODE=644 sh -"
 fi
 
-
 # Extract kubeconfig
 export K3S_IP_SERVER="https://$(multipass info k3s-master | grep "IPv4" | awk -F' ' '{print $2}'):6443"
 multipass exec k3s-master -- /bin/bash -c "cat /etc/rancher/k3s/k3s.yaml" | sed "s%https://127.0.0.1:6443%${K3S_IP_SERVER}%g" | sed "s/default/k3s/g" > ~/.kube/k3s.yaml
@@ -96,7 +95,12 @@ export KUBECONFIG=~/.kube/k3s.yaml
 echo "Waiting 2 seconds"
 sleep 2
 
+# Node information
+
 echo "K3S cluster deployed" | ts '[%Y-%m-%d %H:%M:%S]' | tee -a ./logs/summary.log
+
+multipass exec k3s-master -- lsb_release -a | ts '[%Y-%m-%d %H:%M:%S]' | tee -a ./logs/summary.log
+multipass exec k3s-master -- uname -r | ts '[%Y-%m-%d %H:%M:%S] Kernel: ' | tee -a ./logs/summary.log
 
 # Install falco
 if [ "$FALCO_CHART_LOCATION" == "" ]; then
