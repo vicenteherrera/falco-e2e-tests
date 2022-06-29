@@ -8,10 +8,21 @@ echo "Starting tests at $START_TIME" | tee -a ./logs/summary.log
 LABEL_APP_KEY=$(kubectl get ds falco -n falco -oyaml | yq '.metadata.labels' | grep -v 'instance' | grep 'falco' | grep 'app' | yq '. | keys' | cut -c 3-)
 echo "Using label key for selector: $LABEL_APP_KEY"
 echo "Waiting for Falco pods to be ready, timeout 120s"
-EXIT_CODE=1
+EXIT_CODE=100
 kubectl wait pods -n falco -l $LABEL_APP_KEY=falco --for condition=Ready --timeout=120s || EXIT_CODE=$?
-if [ $EXIT_CODE -eq 0 ]; then
+echo "Falco pod information for tests started at $START_TIME" > ./logs/falco_pod.log
+echo "" >> ./logs/falco_pod.log
+echo "Falco pod events:" >> ./logs/falco_pod.log
+FALCO_POD=$(kubectl -n falco get pods -o=jsonpath='{.items[0].metadata.name}')
+kubectl get event -n falco --field-selector involvedObject.name=$FALCO_POD >> ./logs/falco_pod.log
+echo "" >> ./logs/falco_pod.log
+echo "Falco pod logs:" >> ./logs/falco_pod.log
+kubectl logs daemonset/falco -n falco >> ./logs/falco_pod.log
+if [ $EXIT_CODE -eq 1 ]; then
   echo "[ FAIL ]: Falco pods ready" | ts '[%Y-%m-%d %H:%M:%S]' | tee -a ./logs/summary.log
+  echo "Check logs/falco_pod.log for more information" | tee -a ./logs/summary.log
+  echo "No further test can be executed"
+  exit
 else
   echo "[  OK  ]: Falco pods ready" | ts '[%Y-%m-%d %H:%M:%S]' | tee -a ./logs/summary.log
 fi
