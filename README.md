@@ -17,17 +17,13 @@ This script will:
 # Check summary log
 cat ./logs/summary.log
 
-# Just execute test on existing cluster
+# Just execute test on existing cluster any number of times
 ./tests.sh
 ```
 
 ## Configuration
 
 See variable definitions at the beginning of the `bootstrap.sh` script.
-
-## Caveats
-
-When re-running tests, a successful run without re-creating the cluster will populate the Falco log with entries that will be detected on next runs for 5 minutes, even if the new runs fails. It is planned to fix this.
 
 ## Prerequisites
 

@@ -25,13 +25,15 @@ else
 fi
 
 echo "Attaching to pod Falco"
-kubectl exec -it svc/falco -n falco -- ls 1>/dev/null
+TEST_START=$(date +'%Y-%m-%dT%H:%M:%SZ' --utc)
+kubectl exec -it daemonset/falco -n falco -- ls 1>/dev/null
 echo -n "Checking runtime detection"
-TEST_EXEC=$(kubectl logs svc/falco -n falco --since=5m | tee logs/detect_runtime.log | grep "Notice Attach/Exec to pod (user=system:admin pod=falco-" ||:)
-I=30
+MATCH="Notice Attach/Exec to pod (user=system:admin pod=falco-"
+TEST_EXEC=$(kubectl logs daemonset/falco -n falco --since-time="$TEST_START" | tee logs/detect_runtime.log | grep "$MATCH" ||:)
+I=20
 while [ $I -ne 0 ] && [ "$TEST_EXEC" == "" ]; do
   sleep 3
-  TEST_EXEC=$(kubectl logs svc/falco -n falco --since=5m | tee logs/detect_runtime.log | grep "Notice Attach/Exec to pod (user=system:admin pod=falco-" ||:)
+  TEST_EXEC=$(kubectl logs daemonset/falco -n falco --since-time="$TEST_START" | tee logs/detect_runtime.log | grep "$MATCH" ||:)
   let I=I-1
   echo -n "."
 done
@@ -43,16 +45,18 @@ else
 fi
 
 echo "Cleaning up possible debug pod"
-kubectl delete pod debug -n kube-system ||:
+kubectl delete pod debug -n kube-system 2>/dev/null ||:
 
 echo "Launching pod in kube-system"
+TEST_START=$(date +'%Y-%m-%dT%H:%M:%SZ' --utc)
 kubectl run -it --rm --restart=Never debug -n kube-system --image alpine -- ls 1>/dev/null
 echo -n "Checking kube audit detection"
-TEST_AUDIT=$(kubectl logs svc/falco -n falco --since=5m | tee logs/detect_audit.log | grep "Warning Pod created in kube namespace (user=system:admin pod=debug ns=kube-system images=alpine)" ||:)
-I=30
+MATCH="Warning Pod created in kube namespace (user=system:admin pod=debug ns=kube-system images=alpine)"
+TEST_AUDIT=$(kubectl logs daemonset/falco -n falco --since-time="$TEST_START" | tee logs/detect_audit.log | grep "$MATCH" ||:)
+I=20
 while [ $I -ne 0 ] && [ "$TEST_AUDIT" == "" ]; do
   sleep 3
-  TEST_AUDIT=$(kubectl logs svc/falco -n falco --since=5m | tee logs/detect_audit.log | grep "Warning Pod created in kube namespace (user=system:admin pod=debug ns=kube-system images=alpine)" ||:)
+  TEST_AUDIT=$(kubectl logs daemonset/falco -n falco --since-time="$TEST_START" | tee logs/detect_audit.log | grep "$MATCH" ||:)
   let I=I-1
   echo -n "."
 done
