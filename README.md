@@ -17,8 +17,17 @@ This script will:
 # Check summary log
 cat ./logs/summary.log
 
+# In case of Falco pod errors, check log
+cat ./logs/falco_pod.log
+
+# Setup kubeconfig to access the cluster 
+export KUBECONFIG=~/.kube/k3s.yaml
+
 # Just execute tests on existing cluster any number of times
 ./tests.sh
+
+# Destroy multipass cluster
+multipass delete --all -p
 ```
 
 ## Configuration
@@ -27,6 +36,7 @@ See variable definitions at the beginning of the `bootstrap.sh` script.
 
 ## Prerequisites
 
+* multipass
 * kubectl
 * helm
 * tee
