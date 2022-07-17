@@ -125,8 +125,19 @@ export K3S_IP_SERVER="https://$(multipass info k3s-master | grep "IPv4" | awk -F
 multipass exec k3s-master -- /bin/bash -c "cat /etc/rancher/k3s/k3s.yaml" | sed "s%https://127.0.0.1:6443%${K3S_IP_SERVER}%g" | sed "s/default/k3s/g" > ~/.kube/k3s.yaml
 export KUBECONFIG=~/.kube/k3s.yaml
 
-echo "Waiting 2 seconds"
-sleep 2
+echo "Waiting control plane to be ready initially"
+TEST_EXEC=""
+I=10
+while [ $I -ne 0 ] && [ "$TEST_EXEC" == "" ]; do
+  sleep 2
+  TEST_EXEC=$(kubectl get nodes 2>/dev/null ||:)
+  let I=I-1
+  echo -n "."
+done
+if [ "$TEST_EXEC" == "" ]; then
+  echo "Control plane not available"
+  exit 1
+fi
 
 # Node information
 
@@ -211,8 +222,20 @@ multipass exec k3s-master -- /bin/bash -c "sudo chmod o-w /etc/systemd/system/k3
 multipass exec k3s-master -- /bin/bash -c "sudo systemctl daemon-reload"
 multipass exec k3s-master -- /bin/bash -c "sudo systemctl restart k3s"
 
-echo "Waiting 5 seconds"
-sleep 5
+echo "Waiting control plane to be ready again"
+TEST_EXEC=""
+I=10
+while [ $I -ne 0 ] && [ "$TEST_EXEC" == "" ]; do
+  sleep 2
+  TEST_EXEC=$(kubectl get nodes 2>/dev/null ||:)
+  let I=I-1
+  echo -n "."
+done
+if [ "$TEST_EXEC" == "" ]; then
+  echo "Control plane not available"
+  exit 1
+fi
+
 echo "Kubernetes audit log instrumentation deployed" | ts '[%Y-%m-%d %H:%M:%S]' | tee -a ./logs/summary.log
 
 if [ $INSTALL_KUBELESS -ne 0 ]; then 
