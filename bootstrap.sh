@@ -20,6 +20,9 @@ INSTALL_SIDEKICK=${INSTALL_SIDEKICK:-0}
 # RUN_TESTS: 0 -> no, 1 -> yes
 RUN_TESTS=${RUN_TESTS:-1}
 
+# RUN_AUDIT_TESTS: 0 -> no, 1 -> yes
+RUN_ADIT_TESTS=${RUN_AUDIT_TESTS:-1}
+
 # FALCO_CHART_LOCATION: "" -> use online version , "./local_dir"  -> use local dir
 FALCO_CHART_LOCATION=${FALCO_CHART_LOCATION:-""}
 # FALCO_CHART_LOCATION=./charts/falco
