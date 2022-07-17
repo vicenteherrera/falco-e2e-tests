@@ -9,9 +9,9 @@ echo "Starting tests at $START_TIME" | ts '[%Y-%m-%d %H:%M:%S]' | tee -a ./logs/
 
 LABEL_APP_KEY=$(kubectl get ds falco -n falco -oyaml | yq '.metadata.labels' | grep -v 'instance' | grep 'falco' | grep 'app' | yq '. | keys' | cut -c 3-)
 echo "Using label key for selector: $LABEL_APP_KEY"
-echo "Waiting for Falco pods to be ready, timeout 120s"
+echo "Waiting for Falco pods to be ready, timeout 180s"
 EXIT_CODE=100
-kubectl wait pods -n falco -l $LABEL_APP_KEY=falco --for condition=Ready --timeout=120s || EXIT_CODE=$?
+kubectl wait pods -n falco -l $LABEL_APP_KEY=falco --for condition=Ready --timeout=180s || EXIT_CODE=$?
 echo "Falco pod information for tests started at $START_TIME" > ./logs/falco_pod.log
 echo "" >> ./logs/falco_pod.log
 echo "Falco pod events:" >> ./logs/falco_pod.log
