@@ -122,14 +122,14 @@ fi
 
 # Extract kubeconfig
 export K3S_IP_SERVER="https://$(multipass info k3s-master | grep "IPv4" | awk -F' ' '{print $2}'):6443"
-multipass exec k3s-master -- /bin/bash -c "cat /etc/rancher/k3s/k3s.yaml" | sed "s%https://127.0.0.1:6443%${K3S_IP_SERVER}%g" | sed "s/default/k3s/g" > ~/.kube/k3s.yaml
-export KUBECONFIG=~/.kube/k3s.yaml
+multipass exec k3s-master -- /bin/bash -c "cat /etc/rancher/k3s/k3s.yaml" | sed "s%https://127.0.0.1:6443%${K3S_IP_SERVER}%g" | sed "s/default/k3s/g" > ./kubeconfig.yaml
+export KUBECONFIG=./kubeconfig.yaml
 
 echo "Waiting control plane to be ready initially"
 TEST_EXEC=""
 I=10
 while [ $I -ne 0 ] && [ "$TEST_EXEC" == "" ]; do
-  sleep 2
+  sleep 3
   TEST_EXEC=$(kubectl get nodes 2>/dev/null ||:)
   let I=I-1
   echo -n "."
@@ -226,7 +226,7 @@ echo "Waiting control plane to be ready again"
 TEST_EXEC=""
 I=10
 while [ $I -ne 0 ] && [ "$TEST_EXEC" == "" ]; do
-  sleep 2
+  sleep 3
   TEST_EXEC=$(kubectl get nodes 2>/dev/null ||:)
   let I=I-1
   echo -n "."
@@ -315,10 +315,10 @@ EOF
 
 fi
 
-# Testing falco installation
-if [ $RUN_TESTS -ne 0 ]; then
-  source ./tests.sh
-fi
+# # Testing falco installation
+# if [ $RUN_TESTS -ne 0 ]; then
+#   source ./tests.sh
+# fi
 
 # End
 
@@ -327,6 +327,6 @@ echo "Finishing execution at: $END_TIME" | tee -a ./logs/summary.log
 echo ""
 echo "To access the cluster with kubectl, set variable in your shell"
 echo "# bash/zsh:"
-echo "export KUBECONFIG=~/.kube/k3s.yaml"
+echo "export KUBECONFIG=./kubeconfig.yaml"
 echo "# fish:"
-echo "set -x KUBECONFIG ~/.kube/k3s.yaml"
+echo "set -x KUBECONFIG ./kubeconfig.yaml"

@@ -1,10 +1,10 @@
 # Tests
 
-all: delete-cluster bootstrap summary
+all: delete-cluster bootstrap tests summary
 
-all-local-chart: delete-cluster bootstrap-local-chart summary
+all-local-chart: delete-cluster bootstrap-local-chart tests summary
 
-all-latest: delete-cluster bootstrap-latest summary
+all-latest: delete-cluster bootstrap-latest tests summary
 
 # -----------------------------------------------------------------------
 
@@ -17,13 +17,22 @@ requirements:
 # -----------------------------------------------------------------------
 
 bootstrap:
-	./bootstrap.sh
+	./scripts/bootstrap.sh
 
 bootstrap-local-chart:
-	FALCO_CHART_LOCATION="./charts/falco" ./bootstrap.sh
+	FALCO_CHART_LOCATION="./charts/falco" ./scripts/bootstrap.sh
 
 bootstrap-latest:
-	K3S_VERSION="latest" FALCO_CHART_VERSION="latest" KUBELESS_VERSION="latest" SIDEKICK_UI_VERSION="latest" ./bootstrap.sh
+	K3S_VERSION="latest" FALCO_CHART_VERSION="latest" KUBELESS_VERSION="latest" SIDEKICK_UI_VERSION="latest" ./scripts/bootstrap.sh
+
+
+# -----------------------------------------------------------------------
+
+tests:
+	 ./scripts/tests.sh
+
+tests-noaudit:
+	 TEST_AUDIT=0 ./scripts/tests.sh
 
 # -----------------------------------------------------------------------
 

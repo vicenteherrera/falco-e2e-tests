@@ -3,6 +3,7 @@
 set -e
 
 RUN_AUDIT_TESTS=${RUN_AUDIT_TESTS:-1}
+export KUBECONFIG=./kubeconfig.yaml
 
 START_TIME=$(date +'%Y-%m-%d %H:%M')
 echo "Starting tests at $START_TIME" | ts '[%Y-%m-%d %H:%M:%S]' | tee -a ./logs/summary.log

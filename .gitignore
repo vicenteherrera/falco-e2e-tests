@@ -1,4 +1,4 @@
 webhook-config.yaml
-tests.sh
 .vscode/**
 logs/*.log
+kubeconfig.yaml

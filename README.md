@@ -12,25 +12,25 @@ This project makes it easy for you to:
 
 ```bash
 # Create cluster, deploy chart, and execute tests with default values
-./bootstrap.sh
+make
 
 # Check summary log
-cat ./logs/summary.log
+make summary
 
 # In case of Falco pod errors, check logs
-cat ./logs/falco_pod.log
+make pod_logs
 
 # Setup kubeconfig to access the cluster 
 export KUBECONFIG=~/.kube/k3s.yaml
 
 # Just execute tests on existing cluster any number of times
-./tests.sh
+make tests
 
 # Destroy multipass cluster
-multipass delete --all -p
+make delete-cluster
 ```
 
-Also check `makefile` for easy chained calls.
+Check `makefile` and `scripts/*.sh` for more options
 
 ### Additional examples
 
@@ -45,13 +45,13 @@ make all-local-chart
 ```bash
 # Deploy everything with latests versions
 K3S_VERSION="latest" FALCO_CHART_VERSION="latest" KUBELESS_VERSION="latest" \
-  SIDEKICK_UI_VERSION="latest" INSTALL_KUBELESS=1 INSTALL_SIDEKICK=1 RUN_TESTS=1 \
+  SIDEKICK_UI_VERSION="latest" INSTALL_KUBELESS=1 INSTALL_SIDEKICK=1 \
   ./bootstrap.sh
 ```
 
 ## Configuration
 
-See variable definitions at the beginning of the `bootstrap.sh` script.
+See variable definitions at the beginning of the `scripts/bootstrap.sh` script.
 
 ## Prerequisites
 
