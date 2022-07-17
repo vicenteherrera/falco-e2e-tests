@@ -27,6 +27,11 @@ RUN_ADIT_TESTS=${RUN_AUDIT_TESTS:-1}
 FALCO_CHART_LOCATION=${FALCO_CHART_LOCATION:-""}
 # FALCO_CHART_LOCATION=./charts/falco
 
+# UBUNTU_VERSION: "" -> use LTS version
+# Use `multipass find` to list possible version values
+UBUNTU_VERSION=${UBUNTU_VERSION:-"20.04"}
+# UBUNTU_VERSION=22.04
+
 # Latest known working configuration
 
 K3S_WORKING="v1.21.11+k3s1"
@@ -100,9 +105,9 @@ echo "K3S cluster running on multipass virtual machines" | ts '[%Y-%m-%d %H:%M:%
 if [ $MULTINODE -ne 0 ]; then 
   # Multi node cluster
   echo "Multi node: 1 master, 2 worker nodes" | ts '[%Y-%m-%d %H:%M:%S]' | tee -a ./logs/summary.log
-  multipass launch --name k3s-master --cpus 1 --mem 2048M --disk 10G
-  multipass launch --name k3s-node1 --cpus 1 --mem 2048M --disk 15G
-  multipass launch --name k3s-node2 --cpus 1 --mem 2048M --disk 15G
+  multipass launch --name k3s-master "$UBUNTU_VERSION" --cpus 1 --mem 2048M --disk 10G
+  multipass launch --name k3s-node1 "$UBUNTU_VERSION" --cpus 1 --mem 2048M --disk 15G
+  multipass launch --name k3s-node2 "$UBUNTU_VERSION" --cpus 1 --mem 2048M --disk 15G
   multipass exec k3s-master -- /bin/bash -c "curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION=$K3S_VERSION K3S_KUBECONFIG_MODE=644 sh -"
   export K3S_TOKEN="$(multipass exec k3s-master -- /bin/bash -c "sudo cat /var/lib/rancher/k3s/server/node-token")"
   export K3S_IP_SERVER="https://$(multipass info k3s-master | grep "IPv4" | awk -F' ' '{print $2}'):6443"
@@ -111,7 +116,7 @@ if [ $MULTINODE -ne 0 ]; then
 else
   # Single node cluster
   echo "Single node: 1 master/worker" | ts '[%Y-%m-%d %H:%M:%S]' | tee -a ./logs/summary.log
-  multipass launch --name k3s-master --cpus 1 --mem 2048M --disk 20G
+  multipass launch --name k3s-master "$UBUNTU_VERSION" --cpus 1 --mem 2048M --disk 20G
   multipass exec k3s-master -- /bin/bash -c "curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION=$K3S_VERSION K3S_KUBECONFIG_MODE=644 sh -"
 fi
 
