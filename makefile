@@ -8,6 +8,14 @@ all-latest: delete-cluster bootstrap-latest summary
 
 # -----------------------------------------------------------------------
 
+requirements:
+	which ts
+	which tee
+	multipass --version
+	kubectl version
+
+# -----------------------------------------------------------------------
+
 bootstrap:
 	./bootstrap.sh
 
