@@ -13,6 +13,7 @@ echo "Using label key for selector: $LABEL_APP_KEY"
 echo "Waiting for Falco pods to be ready, timeout 180s"
 EXIT_CODE=100
 kubectl wait pods -n falco -l $LABEL_APP_KEY=falco --for condition=Ready --timeout=180s || EXIT_CODE=$?
+
 echo "Falco pod information for tests started at $START_TIME" > ./logs/falco_pod.log
 echo "" >> ./logs/falco_pod.log
 echo "Falco pod events:" >> ./logs/falco_pod.log
@@ -21,6 +22,7 @@ kubectl get event -n falco --field-selector involvedObject.name=$FALCO_POD >> ./
 echo "" >> ./logs/falco_pod.log
 echo "Falco pod logs:" >> ./logs/falco_pod.log
 kubectl logs daemonset/falco -n falco >> ./logs/falco_pod.log
+
 if [ $EXIT_CODE -eq 1 ]; then
   echo "[ FAIL ]: Falco pods ready" | ts '[%Y-%m-%d %H:%M:%S]' | tee -a ./logs/summary.log
   echo "Check logs/falco_pod.log for more information" | tee -a ./logs/summary.log

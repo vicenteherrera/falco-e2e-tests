@@ -17,20 +17,12 @@ INSTALL_KUBELESS=${INSTALL_KUBELESS:-0}
 # INSTALL_SIDEKICK: 0 -> no, 1 -> yes
 INSTALL_SIDEKICK=${INSTALL_SIDEKICK:-0}
 
-# RUN_TESTS: 0 -> no, 1 -> yes
-RUN_TESTS=${RUN_TESTS:-1}
-
 # RUN_AUDIT_TESTS: 0 -> no, 1 -> yes
 RUN_ADIT_TESTS=${RUN_AUDIT_TESTS:-1}
 
 # FALCO_CHART_LOCATION: "" -> use online version , "./local_dir"  -> use local dir
 FALCO_CHART_LOCATION=${FALCO_CHART_LOCATION:-""}
 # FALCO_CHART_LOCATION=./charts/falco
-
-# UBUNTU_VERSION: "" -> use LTS version
-# Use `multipass find` to list possible version values
-UBUNTU_VERSION=${UBUNTU_VERSION:-"20.04"}
-# UBUNTU_VERSION=22.04
 
 # Latest known working configuration
 
@@ -77,10 +69,6 @@ K3S_LABEL=FALCO_CHART_LABEL=KUBELESS_LABEL=""
 
 # Display initial configuration
 
-echo "K3S using version : $K3S_VERSION ($K3S_LABEL)" | tee -a ./logs/summary.log
-echo "  latest version  : $K3S_LATEST" | tee -a ./logs/summary.log
-echo "  known working   : $K3S_WORKING" | tee -a ./logs/summary.log
-
 echo "Falco chart using version : $FALCO_CHART_VERSION ($FALCO_CHART_LABEL)" | tee -a ./logs/summary.log
 echo "  latest version          : $FALCO_CHART_LATEST" | tee -a ./logs/summary.log
 echo "  known working           : $FALCO_CHART_WORKING" | tee -a ./logs/summary.log
@@ -97,230 +85,12 @@ if [ $INSTALL_KUBELESS -ne 0 ]; then
   echo "  known working        : $KUBELESS_WORKING" | tee -a ./logs/summary.log
 fi
 
+dir="$(dirname "$(realpath "$0")")"
 
-# Start preparing the cluster
-
-echo "K3S cluster running on multipass virtual machines" | ts '[%Y-%m-%d %H:%M:%S]' | tee -a ./logs/summary.log
-
-if [ $MULTINODE -ne 0 ]; then 
-  # Multi node cluster
-  echo "Multi node: 1 master, 2 worker nodes" | ts '[%Y-%m-%d %H:%M:%S]' | tee -a ./logs/summary.log
-  multipass launch --name k3s-master "$UBUNTU_VERSION" --cpus 1 --mem 2048M --disk 10G
-  multipass launch --name k3s-node1 "$UBUNTU_VERSION" --cpus 1 --mem 2048M --disk 15G
-  multipass launch --name k3s-node2 "$UBUNTU_VERSION" --cpus 1 --mem 2048M --disk 15G
-  multipass exec k3s-master -- /bin/bash -c "curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION=$K3S_VERSION K3S_KUBECONFIG_MODE=644 sh -"
-  export K3S_TOKEN="$(multipass exec k3s-master -- /bin/bash -c "sudo cat /var/lib/rancher/k3s/server/node-token")"
-  export K3S_IP_SERVER="https://$(multipass info k3s-master | grep "IPv4" | awk -F' ' '{print $2}'):6443"
-  multipass exec k3s-node1 -- /bin/bash -c "curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION=$K3S_VERSION K3S_TOKEN=${K3S_TOKEN} K3S_URL=${K3S_IP_SERVER} sh -"
-  multipass exec k3s-node2 -- /bin/bash -c "curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION=$K3S_VERSION K3S_TOKEN=${K3S_TOKEN} K3S_URL=${K3S_IP_SERVER} sh -"
-else
-  # Single node cluster
-  echo "Single node: 1 master/worker" | ts '[%Y-%m-%d %H:%M:%S]' | tee -a ./logs/summary.log
-  multipass launch --name k3s-master "$UBUNTU_VERSION" --cpus 1 --mem 2048M --disk 20G
-  multipass exec k3s-master -- /bin/bash -c "curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION=$K3S_VERSION K3S_KUBECONFIG_MODE=644 sh -"
-fi
-
-# Extract kubeconfig
-export K3S_IP_SERVER="https://$(multipass info k3s-master | grep "IPv4" | awk -F' ' '{print $2}'):6443"
-multipass exec k3s-master -- /bin/bash -c "cat /etc/rancher/k3s/k3s.yaml" | sed "s%https://127.0.0.1:6443%${K3S_IP_SERVER}%g" | sed "s/default/k3s/g" > ./kubeconfig.yaml
-export KUBECONFIG=./kubeconfig.yaml
-
-echo "Waiting control plane to be ready initially"
-TEST_EXEC=""
-I=10
-while [ $I -ne 0 ] && [ "$TEST_EXEC" == "" ]; do
-  sleep 3
-  TEST_EXEC=$(kubectl get nodes 2>/dev/null ||:)
-  let I=I-1
-  echo -n "."
-done
-if [ "$TEST_EXEC" == "" ]; then
-  echo "Control plane not available"
-  exit 1
-fi
-
-# Node information
-
-echo "K3S cluster deployed" | ts '[%Y-%m-%d %H:%M:%S]' | tee -a ./logs/summary.log
-
-multipass exec k3s-master -- lsb_release -a | ts '[%Y-%m-%d %H:%M:%S]  ' | tee -a ./logs/summary.log
-multipass exec k3s-master -- uname -r | ts '[%Y-%m-%d %H:%M:%S]   Kernel: ' | tee -a ./logs/summary.log
-
-# Install falco
-if [ "$FALCO_CHART_LOCATION" == "" ]; then
-  helm repo add falcosecurity https://falcosecurity.github.io/charts
-  FALCO_CHART_LOCATION="falcosecurity/falco"
-  CHART_VERSION_PARAM="--version $FALCO_CHART_VERSION"
-else 
-  CHART_VERSION_PARAM=""
-  echo "Local Falco Helm chart dir: $FALCO_CHART_LOCATION" | ts '[%Y-%m-%d %H:%M:%S]' | tee -a ./logs/summary.log
-  HELM_VERSION=$(helm show chart "$FALCO_CHART_LOCATION" | yq '.version')
-  echo "  chart version: $HELM_VERSION" | ts '[%Y-%m-%d %H:%M:%S]' | tee -a ./logs/summary.log
-  GIT_REMOTE=$(cd $FALCO_CHART_LOCATION && git config --get remote.origin.url)
-  echo "  git repo remote origin: $GIT_REMOTE" | ts '[%Y-%m-%d %H:%M:%S]' | tee -a ./logs/summary.log
-  GIT_BRANCH=$(cd $FALCO_CHART_LOCATION && git branch --show-current)
-  echo "  git branch: $GIT_BRANCH " | ts '[%Y-%m-%d %H:%M:%S]' | tee -a ./logs/summary.log
-  GIT_COMMIT=$(cd $FALCO_CHART_LOCATION && git rev-parse HEAD)
-  GIT_COMMIT_SHORT=$(cd $FALCO_CHART_LOCATION && git rev-parse --short HEAD)
-  echo "  git commit : $GIT_COMMIT ($GIT_COMMIT_SHORT)" | ts '[%Y-%m-%d %H:%M:%S]' | tee -a ./logs/summary.log
-fi
-
-SIDEKICK_PARAM=""
-if [ $INSTALL_SIDEKICK -ne 0 ]; then
-  SIDEKICK_PARAM="--set falcosidekick.enabled=true \
-  --set falcosidekick.webui.enabled=true \
-  --set falcosidekick.image.tag=latest \
-  --set falcosidekick.webui.image.tag=${SIDEKICK_VERSION} \
-  --set falcosidekick.config.kubeless.namespace=kubeless \
-  --set falcosidekick.config.kubeless.function=delete-pod"
-  echo "Including sidekick with Falco" | tee -a ./logs/summary.log
-fi
-
-INSTALL_COMMAND="helm install falco "$FALCO_CHART_LOCATION" -n falco --create-namespace \
-  $CHART_VERSION_PARAM \
-  -f custom-rules.yaml \
-  --set auditLog.enabled=true $SIDEKICK_PARAM"
-
-echo "Installing Falco helm chart using:" | ts '[%Y-%m-%d %H:%M:%S]' | tee -a ./logs/summary.log
-echo "  $INSTALL_COMMAND" | ts '[%Y-%m-%d %H:%M:%S]' | tee -a ./logs/summary.log
-
-eval $INSTALL_COMMAND
-  
-echo "Falco helm chart deployed" | ts '[%Y-%m-%d %H:%M:%S]' | tee -a ./logs/summary.log
-
-# Set up audit log endpoint (falco)
-# Prepare for audit log
-multipass exec k3s-master -- /bin/bash -c "sudo mkdir -p /var/lib/rancher/audit"
-multipass exec k3s-master -- /bin/bash -c "wget https://raw.githubusercontent.com/falcosecurity/evolution/master/examples/k8s_audit_config/audit-policy.yaml"
-multipass exec k3s-master -- /bin/bash -c "sudo cp audit-policy.yaml /var/lib/rancher/audit/"
-
-export FALCO_SVC_ENDPOINT=$(kubectl get svc -n falco --field-selector metadata.name=falco -o=json | jq -r ".items[] | .spec.clusterIP")
-cat <<EOF > webhook-config.yaml
-apiVersion: v1
-kind: Config
-clusters:
-- name: falco
-  cluster:
-    server: http://${FALCO_SVC_ENDPOINT}:8765/k8s-audit
-contexts:
-- context:
-    cluster: falco
-    user: ""
-  name: default-context
-current-context: default-context
-preferences: {}
-users: []
-EOF
-multipass transfer webhook-config.yaml k3s-master:/tmp/
-multipass exec k3s-master -- /bin/bash -c "sudo cp /tmp/webhook-config.yaml /var/lib/rancher/audit/"
-multipass exec k3s-master -- /bin/bash -c "sudo sed -i '/^$/d' /etc/systemd/system/k3s.service"
-multipass exec k3s-master -- /bin/bash -c "sudo chmod o+w /etc/systemd/system/k3s.service"
-multipass exec k3s-master -- /bin/bash -c "sudo echo '    --kube-apiserver-arg=audit-log-path=/var/lib/rancher/audit/audit.log \' >> /etc/systemd/system/k3s.service"
-multipass exec k3s-master -- /bin/bash -c "sudo echo '    --kube-apiserver-arg=audit-policy-file=/var/lib/rancher/audit/audit-policy.yaml \' >> /etc/systemd/system/k3s.service"
-multipass exec k3s-master -- /bin/bash -c "sudo echo '    --kube-apiserver-arg=audit-webhook-config-file=/var/lib/rancher/audit/webhook-config.yaml \' >> /etc/systemd/system/k3s.service"
-multipass exec k3s-master -- /bin/bash -c "sudo chmod o-w /etc/systemd/system/k3s.service"
-multipass exec k3s-master -- /bin/bash -c "sudo systemctl daemon-reload"
-multipass exec k3s-master -- /bin/bash -c "sudo systemctl restart k3s"
-
-echo "Waiting control plane to be ready again"
-TEST_EXEC=""
-I=10
-while [ $I -ne 0 ] && [ "$TEST_EXEC" == "" ]; do
-  sleep 3
-  TEST_EXEC=$(kubectl get nodes 2>/dev/null ||:)
-  let I=I-1
-  echo -n "."
-done
-if [ "$TEST_EXEC" == "" ]; then
-  echo "Control plane not available"
-  exit 1
-fi
-
-echo "Kubernetes audit log instrumentation deployed" | ts '[%Y-%m-%d %H:%M:%S]' | tee -a ./logs/summary.log
-
-if [ $INSTALL_KUBELESS -ne 0 ]; then 
-
-  # Install kubeless + Function
-  kubectl create ns kubeless
-  kubectl create -n kubeless -f \
-    https://github.com/kubeless/kubeless/releases/download/$KUBELESS_VERSION/kubeless-$KUBELESS_VERSION.yaml
-
-  cat <<EOF | kubectl apply -n kubeless -f -
-  apiVersion: v1
-  kind: ServiceAccount
-  metadata:
-    name: falco-pod-delete
-  ---
-  kind: ClusterRole
-  apiVersion: rbac.authorization.k8s.io/v1
-  metadata:
-    name: falco-pod-delete-cluster-role
-  rules:
-    - apiGroups: [""]
-      resources: ["pods"]
-      verbs: ["get", "list", "delete"]
-  ---
-  kind: ClusterRoleBinding
-  apiVersion: rbac.authorization.k8s.io/v1
-  metadata:
-    name: falco-pod-delete-cluster-role-binding
-  roleRef:
-    kind: ClusterRole
-    name: falco-pod-delete-cluster-role
-    apiGroup: rbac.authorization.k8s.io
-  subjects:
-    - kind: ServiceAccount
-      name: falco-pod-delete
-      namespace: kubeless
-  EOF
-  cat <<EOF | kubectl apply -n kubeless -f -
-  apiVersion: kubeless.io/v1beta1
-  kind: Function
-  metadata:
-    finalizers:
-      - kubeless.io/function
-    generation: 1
-    labels:
-      created-by: kubeless
-      function: delete-pod
-    name: delete-pod
-  spec:
-    checksum: sha256:3889d9bab6b6f94b4ed20600836eb7c50abf1e56bd665c5d8482e189d1189462
-    deps: |
-      kubernetes>=12.0.1
-    function-content-type: text
-    function: |-
-      from kubernetes import client,config
-      config.load_incluster_config()
-      def delete_pod(event, context):
-          rule = event['data']['rule'] or None
-          output_fields = event['data']['output_fields'] or None
-          if rule and rule == "Terminal shell in container" and output_fields:
-              if output_fields['k8s.ns.name'] and output_fields['k8s.pod.name']:
-                  namespace = output_fields['k8s.ns.name']
-                  if namespace == "default":
-                      pod = output_fields['k8s.pod.name']
-                      print (f"Deleting pod \"{pod}\" in namespace \"{namespace}\"")
-                      client.CoreV1Api().delete_namespaced_pod(name=pod, namespace=namespace, body=client.V1DeleteOptions(grace_period_seconds=0))
-    handler: delete-pod.delete_pod
-    runtime: python3.7
-    deployment:
-      spec:
-        template:
-          spec:
-            serviceAccountName: falco-pod-delete
-EOF
-
-  echo "Kubeless deployed" | ts '[%Y-%m-%d %H:%M:%S]' | tee -a ./logs/summary.log
-
-fi
-
-# # Testing falco installation
-# if [ $RUN_TESTS -ne 0 ]; then
-#   source ./tests.sh
-# fi
-
-# End
+source "$dir"/multipass/create_cluster.sh
+source "$dir"/install_falco.sh
+source "$dir"/multipass/enable_auditlog.sh
+source "$dir"/install_kubeless.sh
 
 END_TIME=$(date +'%Y-%m-%d %H:%M')
 echo "Finishing execution at: $END_TIME" | tee -a ./logs/summary.log
